@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 )
 
 // ToolTarget represents a known AI tool's skill directory.
@@ -14,11 +15,11 @@ type ToolTarget struct {
 }
 
 // DetectToolDirs returns paths to skill directories for detected AI tools.
+// For OpenClaw, only the main agent's skills directory is included.
 func DetectToolDirs() []string {
 	home, _ := os.UserHomeDir()
 	var dirs []string
 
-	// Static tool targets
 	staticTargets := []struct {
 		name string
 		dir  string
@@ -36,18 +37,18 @@ func DetectToolDirs() []string {
 		}
 	}
 
-	// OpenClaw agent targets (multiple agents, each with their own skills dir)
-	for _, t := range openclawAgentTargets(home) {
-		parent := filepath.Dir(t.Dir)
+	// OpenClaw: only the main agent
+	if mainTarget := openclawMainTarget(home); mainTarget != nil {
+		parent := filepath.Dir(mainTarget.Dir)
 		if _, err := os.Stat(parent); err == nil {
-			dirs = append(dirs, t.Dir)
+			dirs = append(dirs, mainTarget.Dir)
 		}
 	}
 
 	return dirs
 }
 
-// KnownTools returns all known tool targets.
+// KnownTools returns all known tool targets including all OpenClaw agents.
 func KnownTools() []ToolTarget {
 	home, _ := os.UserHomeDir()
 
@@ -59,7 +60,6 @@ func KnownTools() []ToolTarget {
 		{"opencode", filepath.Join(home, ".opencode", "skills")},
 	}
 
-	// Append all detected OpenClaw agents
 	tools = append(tools, openclawAgentTargets(home)...)
 
 	return tools
@@ -79,26 +79,61 @@ type openclawConfig struct {
 	} `json:"agents"`
 }
 
-// openclawAgentTargets reads ~/.openclaw/openclaw.json and returns a ToolTarget
-// for each configured agent's skills directory. Returns nil if OpenClaw is not
-// installed or not configured.
-func openclawAgentTargets(home string) []ToolTarget {
+func readOpenclawConfig(home string) *openclawConfig {
 	configPath := filepath.Join(home, ".openclaw", "openclaw.json")
 	data, err := os.ReadFile(configPath)
 	if err != nil {
-		return nil // OpenClaw not installed
+		return nil
 	}
-
 	var cfg openclawConfig
 	if err := json.Unmarshal(data, &cfg); err != nil {
 		return nil
 	}
+	if cfg.Agents.Defaults.Workspace == "" {
+		return nil
+	}
+	return &cfg
+}
 
-	defaultWorkspace := cfg.Agents.Defaults.Workspace
-	if defaultWorkspace == "" {
-		return nil // No workspace configured
+// openclawMainTarget returns the ToolTarget for the main agent only.
+func openclawMainTarget(home string) *ToolTarget {
+	cfg := readOpenclawConfig(home)
+	if cfg == nil {
+		return nil
 	}
 
+	defaultWorkspace := cfg.Agents.Defaults.Workspace
+
+	// Look for the "main" agent in the list
+	for _, agent := range cfg.Agents.List {
+		id := agent.ID
+		if id == "main" {
+			workspace := agent.Workspace
+			if workspace == "" {
+				workspace = defaultWorkspace
+			}
+			return &ToolTarget{
+				Name: "openclaw",
+				Dir:  filepath.Join(workspace, "skills"),
+			}
+		}
+	}
+
+	// If no "main" agent in list, use default workspace
+	return &ToolTarget{
+		Name: "openclaw",
+		Dir:  filepath.Join(defaultWorkspace, "skills"),
+	}
+}
+
+// openclawAgentTargets returns a ToolTarget for every configured agent.
+func openclawAgentTargets(home string) []ToolTarget {
+	cfg := readOpenclawConfig(home)
+	if cfg == nil {
+		return nil
+	}
+
+	defaultWorkspace := cfg.Agents.Defaults.Workspace
 	var targets []ToolTarget
 
 	for _, agent := range cfg.Agents.List {
@@ -116,7 +151,6 @@ func openclawAgentTargets(home string) []ToolTarget {
 		})
 	}
 
-	// If no agents in list but default workspace exists, use it
 	if len(targets) == 0 {
 		targets = append(targets, ToolTarget{
 			Name: "openclaw",
@@ -139,7 +173,6 @@ func LinkSkill(skillName, toolDir string) error {
 	}
 
 	linkPath := filepath.Join(toolDir, skillName)
-	// Remove existing symlink if present
 	os.Remove(linkPath)
 
 	if err := os.Symlink(skillDir, linkPath); err != nil {
@@ -149,6 +182,7 @@ func LinkSkill(skillName, toolDir string) error {
 }
 
 // AutoLink links a skill to all detected tool directories.
+// For OpenClaw, only the main agent is linked.
 func AutoLink(skillName string) []string {
 	var linked []string
 	for _, dir := range DetectToolDirs() {
@@ -160,21 +194,34 @@ func AutoLink(skillName string) []string {
 }
 
 // ToolDirByName returns the skill directory for a named tool.
-// Supports "openclaw" as a shorthand that matches the first openclaw agent,
-// as well as specific "openclaw/<agent>" targets.
+// "openclaw" resolves to the main agent. "openclaw/<agent>" targets a specific agent.
 func ToolDirByName(name string) (string, error) {
+	home, _ := os.UserHomeDir()
+
+	// Handle bare "openclaw" → main agent
+	if name == "openclaw" {
+		if t := openclawMainTarget(home); t != nil {
+			return t.Dir, nil
+		}
+		return "", fmt.Errorf("openclaw not configured (no ~/.openclaw/openclaw.json found)")
+	}
+
+	// Handle "openclaw/<agent>"
+	if strings.HasPrefix(name, "openclaw/") {
+		agentName := name[9:]
+		for _, t := range openclawAgentTargets(home) {
+			tAgent := t.Name[9:] // strip "openclaw/"
+			if tAgent == agentName {
+				return t.Dir, nil
+			}
+		}
+		return "", fmt.Errorf("openclaw agent %q not found in config", agentName)
+	}
+
 	for _, t := range KnownTools() {
 		if t.Name == name {
 			return t.Dir, nil
 		}
 	}
-	// Allow bare "openclaw" to match first openclaw agent
-	if name == "openclaw" {
-		for _, t := range KnownTools() {
-			if len(t.Name) > 8 && t.Name[:9] == "openclaw/" {
-				return t.Dir, nil
-			}
-		}
-	}
-	return "", fmt.Errorf("unknown tool %q (known: claude-code, openclaw, openclaw/<agent>, copilot, cursor, codex, opencode)", name)
+	return "", fmt.Errorf("unknown tool %q (known: claude-code, openclaw[/<agent>], copilot, cursor, codex, opencode)", name)
 }
