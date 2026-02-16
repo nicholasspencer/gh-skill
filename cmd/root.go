@@ -23,4 +23,6 @@ func init() {
 	rootCmd.AddCommand(publishCmd)
 	rootCmd.AddCommand(searchCmd)
 	rootCmd.AddCommand(linkCmd)
+	rootCmd.AddCommand(installCmd)
+	rootCmd.AddCommand(forkCmd)
 }
