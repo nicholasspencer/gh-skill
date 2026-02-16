@@ -44,7 +44,7 @@ gh-skill (Go, cobra CLI)
 | Name | Directory | Auto-linked |
 |------|-----------|-------------|
 | claude-code | `~/.claude/skills/` | ✓ |
-| openclaw | `~/.chad/skills/` (or config) | ✓ |
+| openclaw | Per-agent from `~/.openclaw/openclaw.json` | ✓ |
 | copilot | `~/.copilot/skills/` | ✓ |
 | codex | `~/.codex/skills/` | ✓ |
 | opencode | `~/.opencode/skills/` | ✓ |

@@ -80,28 +80,23 @@ type openclawConfig struct {
 }
 
 // openclawAgentTargets reads ~/.openclaw/openclaw.json and returns a ToolTarget
-// for each configured agent's skills directory. Falls back to the legacy
-// ~/.chad/skills/ if no config is found.
+// for each configured agent's skills directory. Returns nil if OpenClaw is not
+// installed or not configured.
 func openclawAgentTargets(home string) []ToolTarget {
 	configPath := filepath.Join(home, ".openclaw", "openclaw.json")
 	data, err := os.ReadFile(configPath)
 	if err != nil {
-		// Fallback: no openclaw config, try legacy path
-		return []ToolTarget{
-			{"openclaw", filepath.Join(home, ".chad", "skills")},
-		}
+		return nil // OpenClaw not installed
 	}
 
 	var cfg openclawConfig
 	if err := json.Unmarshal(data, &cfg); err != nil {
-		return []ToolTarget{
-			{"openclaw", filepath.Join(home, ".chad", "skills")},
-		}
+		return nil
 	}
 
 	defaultWorkspace := cfg.Agents.Defaults.Workspace
 	if defaultWorkspace == "" {
-		defaultWorkspace = filepath.Join(home, ".chad")
+		return nil // No workspace configured
 	}
 
 	var targets []ToolTarget
@@ -121,7 +116,7 @@ func openclawAgentTargets(home string) []ToolTarget {
 		})
 	}
 
-	// If no agents configured, fall back to default workspace
+	// If no agents in list but default workspace exists, use it
 	if len(targets) == 0 {
 		targets = append(targets, ToolTarget{
 			Name: "openclaw",

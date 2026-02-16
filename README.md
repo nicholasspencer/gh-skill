@@ -41,7 +41,7 @@ Skills auto-link to every detected tool on your machine:
 |------|----------------|
 | [Claude Code](https://docs.anthropic.com/en/docs/claude-code) | `~/.claude/skills/` |
 | [Copilot CLI](https://githubnext.com/projects/copilot-cli) | `~/.copilot/skills/` |
-| [OpenClaw](https://openclaw.ai) | `~/.chad/skills/` |
+| [OpenClaw](https://openclaw.ai) | Per-agent (from `~/.openclaw/openclaw.json`) |
 | [Codex](https://openai.com/index/introducing-codex/) | `~/.codex/skills/` |
 | [OpenCode](https://opencode.ai) | `~/.opencode/skills/` |
 | [Cursor](https://cursor.sh) | `.cursor/skills/` |
