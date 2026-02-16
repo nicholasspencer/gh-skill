@@ -21,7 +21,7 @@ var initCmd = &cobra.Command{
 		dirs := internal.DetectToolDirs()
 		if len(dirs) == 0 {
 			fmt.Println("No AI tool skill directories detected.")
-			fmt.Println("Supported tools: claude-code, openclaw, copilot, codex, opencode")
+			fmt.Println("Supported tools: claude-code, openclaw (multi-agent), copilot, codex, opencode")
 			return nil
 		}
 

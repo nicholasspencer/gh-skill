@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 )
 
 // ToolTarget represents a known AI tool's skill directory.
@@ -14,57 +15,150 @@ type ToolTarget struct {
 }
 
 // DetectToolDirs returns paths to skill directories for detected AI tools.
+// For OpenClaw, only the main agent's skills directory is included.
 func DetectToolDirs() []string {
 	home, _ := os.UserHomeDir()
 	var dirs []string
 
-	targets := []struct {
+	staticTargets := []struct {
 		name string
 		dir  string
 	}{
 		{"claude-code", filepath.Join(home, ".claude", "skills")},
-		{"openclaw", openclawSkillsDir(home)},
 		{"copilot", filepath.Join(home, ".copilot", "skills")},
 		{"codex", filepath.Join(home, ".codex", "skills")},
 		{"opencode", filepath.Join(home, ".opencode", "skills")},
 	}
 
-	for _, t := range targets {
-		// Check if parent tool dir exists (e.g., ~/.claude/)
+	for _, t := range staticTargets {
 		parent := filepath.Dir(t.dir)
 		if _, err := os.Stat(parent); err == nil {
 			dirs = append(dirs, t.dir)
 		}
 	}
+
+	// OpenClaw: only the main agent
+	if mainTarget := openclawMainTarget(home); mainTarget != nil {
+		parent := filepath.Dir(mainTarget.Dir)
+		if _, err := os.Stat(parent); err == nil {
+			dirs = append(dirs, mainTarget.Dir)
+		}
+	}
+
 	return dirs
 }
 
-// KnownTools returns all known tool targets.
+// KnownTools returns all known tool targets including all OpenClaw agents.
 func KnownTools() []ToolTarget {
 	home, _ := os.UserHomeDir()
-	return []ToolTarget{
+
+	tools := []ToolTarget{
 		{"claude-code", filepath.Join(home, ".claude", "skills")},
-		{"openclaw", openclawSkillsDir(home)},
 		{"copilot", filepath.Join(home, ".copilot", "skills")},
 		{"cursor", filepath.Join(".cursor", "skills")}, // project-level
 		{"codex", filepath.Join(home, ".codex", "skills")},
 		{"opencode", filepath.Join(home, ".opencode", "skills")},
 	}
+
+	tools = append(tools, openclawAgentTargets(home)...)
+
+	return tools
 }
 
-func openclawSkillsDir(home string) string {
-	// Try to read openclaw config for skills_dir
-	configPath := filepath.Join(home, ".chad", "openclaw.json")
+// openclawConfig represents the relevant parts of openclaw.json
+type openclawConfig struct {
+	Agents struct {
+		Defaults struct {
+			Workspace string `json:"workspace"`
+		} `json:"defaults"`
+		List []struct {
+			ID        string `json:"id"`
+			Name      string `json:"name"`
+			Workspace string `json:"workspace"`
+		} `json:"list"`
+	} `json:"agents"`
+}
+
+func readOpenclawConfig(home string) *openclawConfig {
+	configPath := filepath.Join(home, ".openclaw", "openclaw.json")
 	data, err := os.ReadFile(configPath)
-	if err == nil {
-		var cfg map[string]interface{}
-		if json.Unmarshal(data, &cfg) == nil {
-			if dir, ok := cfg["skills_dir"].(string); ok && dir != "" {
-				return dir
+	if err != nil {
+		return nil
+	}
+	var cfg openclawConfig
+	if err := json.Unmarshal(data, &cfg); err != nil {
+		return nil
+	}
+	if cfg.Agents.Defaults.Workspace == "" {
+		return nil
+	}
+	return &cfg
+}
+
+// openclawMainTarget returns the ToolTarget for the main agent only.
+func openclawMainTarget(home string) *ToolTarget {
+	cfg := readOpenclawConfig(home)
+	if cfg == nil {
+		return nil
+	}
+
+	defaultWorkspace := cfg.Agents.Defaults.Workspace
+
+	// Look for the "main" agent in the list
+	for _, agent := range cfg.Agents.List {
+		id := agent.ID
+		if id == "main" {
+			workspace := agent.Workspace
+			if workspace == "" {
+				workspace = defaultWorkspace
+			}
+			return &ToolTarget{
+				Name: "openclaw",
+				Dir:  filepath.Join(workspace, "skills"),
 			}
 		}
 	}
-	return filepath.Join(home, ".chad", "skills")
+
+	// If no "main" agent in list, use default workspace
+	return &ToolTarget{
+		Name: "openclaw",
+		Dir:  filepath.Join(defaultWorkspace, "skills"),
+	}
+}
+
+// openclawAgentTargets returns a ToolTarget for every configured agent.
+func openclawAgentTargets(home string) []ToolTarget {
+	cfg := readOpenclawConfig(home)
+	if cfg == nil {
+		return nil
+	}
+
+	defaultWorkspace := cfg.Agents.Defaults.Workspace
+	var targets []ToolTarget
+
+	for _, agent := range cfg.Agents.List {
+		workspace := agent.Workspace
+		if workspace == "" {
+			workspace = defaultWorkspace
+		}
+		name := agent.Name
+		if name == "" {
+			name = agent.ID
+		}
+		targets = append(targets, ToolTarget{
+			Name: "openclaw/" + name,
+			Dir:  filepath.Join(workspace, "skills"),
+		})
+	}
+
+	if len(targets) == 0 {
+		targets = append(targets, ToolTarget{
+			Name: "openclaw",
+			Dir:  filepath.Join(defaultWorkspace, "skills"),
+		})
+	}
+
+	return targets
 }
 
 // LinkSkill creates a symlink for a skill in the given tool directory.
@@ -79,7 +173,6 @@ func LinkSkill(skillName, toolDir string) error {
 	}
 
 	linkPath := filepath.Join(toolDir, skillName)
-	// Remove existing symlink if present
 	os.Remove(linkPath)
 
 	if err := os.Symlink(skillDir, linkPath); err != nil {
@@ -89,6 +182,7 @@ func LinkSkill(skillName, toolDir string) error {
 }
 
 // AutoLink links a skill to all detected tool directories.
+// For OpenClaw, only the main agent is linked.
 func AutoLink(skillName string) []string {
 	var linked []string
 	for _, dir := range DetectToolDirs() {
@@ -100,11 +194,34 @@ func AutoLink(skillName string) []string {
 }
 
 // ToolDirByName returns the skill directory for a named tool.
+// "openclaw" resolves to the main agent. "openclaw/<agent>" targets a specific agent.
 func ToolDirByName(name string) (string, error) {
+	home, _ := os.UserHomeDir()
+
+	// Handle bare "openclaw" → main agent
+	if name == "openclaw" {
+		if t := openclawMainTarget(home); t != nil {
+			return t.Dir, nil
+		}
+		return "", fmt.Errorf("openclaw not configured (no ~/.openclaw/openclaw.json found)")
+	}
+
+	// Handle "openclaw/<agent>"
+	if strings.HasPrefix(name, "openclaw/") {
+		agentName := name[9:]
+		for _, t := range openclawAgentTargets(home) {
+			tAgent := t.Name[9:] // strip "openclaw/"
+			if tAgent == agentName {
+				return t.Dir, nil
+			}
+		}
+		return "", fmt.Errorf("openclaw agent %q not found in config", agentName)
+	}
+
 	for _, t := range KnownTools() {
 		if t.Name == name {
 			return t.Dir, nil
 		}
 	}
-	return "", fmt.Errorf("unknown tool %q (known: claude-code, openclaw, copilot, cursor, codex, opencode)", name)
+	return "", fmt.Errorf("unknown tool %q (known: claude-code, openclaw[/<agent>], copilot, cursor, codex, opencode)", name)
 }

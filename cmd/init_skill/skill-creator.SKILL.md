@@ -147,7 +147,7 @@ Skills auto-link to these tools when detected:
 | Tool | Directory |
 |------|-----------|
 | Claude Code | `~/.claude/skills/` |
-| OpenClaw | `~/.chad/skills/` |
+| OpenClaw | Per-agent (from config) |
 | Copilot CLI | `~/.copilot/skills/` |
 | Codex | `~/.codex/skills/` |
 | OpenCode | `~/.opencode/skills/` |
