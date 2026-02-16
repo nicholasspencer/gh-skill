@@ -1,6 +1,9 @@
-# AGENTS.md — gh-skill
+# Agent Instructions
 
-A `gh` CLI extension for managing AI agent skills stored as GitHub Gists.
+> **Want to build and publish skills?** This project ships a skill for that.
+> Read [skills/skill-creator/SKILL.md](skills/skill-creator/SKILL.md) — it teaches you the full skill authoring workflow using `gh skill`.
+
+---
 
 ## Architecture
 
@@ -74,10 +77,6 @@ go test ./...
 - **Dependencies**: keep minimal — `cobra` for CLI, `yaml.v3` for front matter, stdlib for everything else
 - **All GitHub API calls** go through `gh api` (inherits auth, no token management)
 - **No auto-execution** of scripts on install — security boundary
-
-## Gist Naming Convention
-
-Published gists use `[gh-skill]` prefix in the description for discoverability. The skill file is named `<skill-name>.skill.md` in the gist (tools expect `SKILL.md` locally — the rename happens at install/publish time).
 
 ## Discoverability
 

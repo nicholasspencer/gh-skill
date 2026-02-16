@@ -1,6 +1,14 @@
 # gh-skill
 
-A [GitHub CLI](https://cli.github.com/) extension for managing AI agent skills stored as GitHub Gists.
+A [GitHub CLI](https://cli.github.com/) extension that turns GitHub Gists into a universal skill registry for AI coding agents.
+
+**The idea:** A GitHub Gist already *is* a skill folder — multiple files, versioning, forks, stars, raw URLs, API access. No new infrastructure needed. `gh skill` adds a thin convention on top.
+
+## Why?
+
+AI agent skills (SKILL.md + scripts + docs) are becoming a standard across tools — Claude Code, Copilot CLI, OpenClaw, Codex, Cursor, OpenCode. But sharing them is fragmented. You end up copy-pasting files between repos or publishing to tool-specific registries.
+
+`gh skill` gives you one command to publish a skill and one command to install it — everywhere.
 
 ## Install
 
@@ -8,78 +16,77 @@ A [GitHub CLI](https://cli.github.com/) extension for managing AI agent skills s
 gh extension install nicholasspencer/gh-skill
 ```
 
-## Usage
+Requires the [GitHub CLI](https://cli.github.com/) (`gh`).
 
-### Install a skill from a gist
+## Quick Start
 
 ```bash
+# Install a skill from a gist
 gh skill add https://gist.github.com/user/abc123
-gh skill add abc123  # by ID
+gh skill add abc123  # or just the ID
+
+# Publish your own skill
+gh skill publish ./my-skill          # secret (unlisted) by default
+gh skill publish ./my-skill --public # discoverable via search
+
+# That's it. The output gives you a shareable install command:
+# ✓ Published: https://gist.github.com/you/abc123
+#   Install with: gh skill add abc123
 ```
 
-Skills are installed to `~/.gistskills/<name>/` and automatically symlinked to detected AI tool skill directories (Claude Code, OpenClaw, Copilot CLI, Codex, OpenCode).
+## How It Works
 
-### List installed skills
+1. **You write a skill** — a folder with a `SKILL.md` (YAML front matter + instructions) and optionally scripts, references, or assets.
+2. **You publish it** — `gh skill publish` creates a gist. Subdirectories are flattened using `--` separators (`scripts/setup.sh` → `scripts--setup.sh`).
+3. **Anyone installs it** — `gh skill add <gist-id>` downloads, expands paths, and symlinks the skill into every detected AI tool on the machine.
+
+### Trust & Security
+
+Skills from unknown authors go through a trust gate — you see the files, any scripts are flagged, and you choose whether to install, trust the author for future installs, or abort. Your own gists and trusted authors skip the prompt.
 
 ```bash
-gh skill list
+gh skill trust list              # see who you trust
+gh skill trust add <username>    # trust an author
+gh skill trust remove <username> # revoke trust
 ```
 
-### Get skill info
+## Commands
 
-```bash
-gh skill info my-skill
-```
+| Command | What it does |
+|---------|-------------|
+| `gh skill add <gist>` | Install a skill + auto-link to tools |
+| `gh skill install <gist>` | Download skill files to a directory (no linking) |
+| `gh skill publish <path>` | Publish a local skill folder as a gist |
+| `gh skill list` | List installed skills |
+| `gh skill info <name>` | Show skill metadata |
+| `gh skill update <name>` | Pull latest gist revision |
+| `gh skill update --all` | Update all installed skills |
+| `gh skill remove <name>` | Uninstall + remove symlinks |
+| `gh skill search <query>` | Search public gists tagged `[gh-skill]` |
+| `gh skill link <name> --target <tool>` | Symlink to a specific tool |
+| `gh skill fork <gist>` | Fork a skill gist for customization |
 
-### Update skills
+## Supported Tools
 
-```bash
-gh skill update my-skill
-gh skill update --all
-```
+Installed skills auto-link to every detected tool:
 
-### Remove a skill
-
-```bash
-gh skill remove my-skill
-```
-
-### Publish a local skill as a gist
-
-```bash
-gh skill publish ./my-skill-folder
-```
-
-Creates a secret (unlisted) gist from a folder containing a `SKILL.md`. Gist files are flat — all files in the skill folder root are published directly.
-
-```bash
-gh skill publish ./my-skill --public   # make it discoverable
-gh skill publish ./my-skill --secret   # explicit secret (default)
-```
-
-### Search for skills
-
-```bash
-gh skill search "git automation"
-```
-
-Searches public gists tagged with `#gistskill`.
-
-### Link to a specific tool
-
-```bash
-gh skill link my-skill --target claude-code
-gh skill link my-skill --target openclaw
-```
+| Tool | Skill Directory |
+|------|----------------|
+| [Claude Code](https://docs.anthropic.com/en/docs/claude-code) | `~/.claude/skills/` |
+| [OpenClaw](https://openclaw.ai) | `~/.chad/skills/` |
+| [Copilot CLI](https://githubnext.com/projects/copilot-cli) | `~/.copilot/skills/` |
+| [Codex](https://openai.com/index/introducing-codex/) | `~/.codex/skills/` |
+| [OpenCode](https://opencode.ai) | `~/.opencode/skills/` |
+| [Cursor](https://cursor.sh) | `.cursor/skills/` (project-level, manual) |
 
 ## Skill Format
 
-A skill is a GitHub Gist with a `SKILL.md` file containing YAML front matter:
+A skill is a folder with a `SKILL.md`:
 
 ```yaml
 ---
 name: my-skill
-description: What this skill does
+description: What this skill does and when to use it
 version: 1.0.0
 tags: [automation, git]
 author: username
@@ -90,16 +97,11 @@ author: username
 Instructions for the AI agent...
 ```
 
-## Supported Tools
+Add `scripts/`, `references/`, or `assets/` directories as needed. See the [skill-creator skill](skills/skill-creator/SKILL.md) for the full authoring guide.
 
-| Tool | Skill Directory | Auto-linked |
-|------|----------------|-------------|
-| Claude Code | `~/.claude/skills/` | ✓ |
-| OpenClaw | `~/.chad/skills/` | ✓ |
-| Copilot CLI | `~/.copilot/skills/` | ✓ |
-| Codex | `~/.codex/skills/` | ✓ |
-| OpenCode | `~/.opencode/skills/` | ✓ |
-| Cursor | `.cursor/skills/` | ✗ (project-level) |
+## For AI Agents
+
+See [AGENTS.md](AGENTS.md) for development instructions if you're an AI agent contributing to this project.
 
 ## License
 
