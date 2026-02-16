@@ -88,6 +88,9 @@ var addCmd = &cobra.Command{
 			fmt.Printf("  → Linked to %s\n", dir)
 		}
 
+		// Lazy init: install meta skill if not present
+		ensureMetaSkill(linked)
+
 		return nil
 	},
 }

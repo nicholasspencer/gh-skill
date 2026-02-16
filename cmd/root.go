@@ -25,4 +25,5 @@ func init() {
 	rootCmd.AddCommand(linkCmd)
 	rootCmd.AddCommand(installCmd)
 	rootCmd.AddCommand(forkCmd)
+	rootCmd.AddCommand(initCmd)
 }
