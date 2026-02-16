@@ -7,12 +7,15 @@ import (
 	"github.com/spf13/cobra"
 )
 
+var searchProvider string
+
 var searchCmd = &cobra.Command{
 	Use:   "search <query>",
-	Short: "Search for skills on GitHub Gists",
+	Short: "Search for skills on GitHub Gists and GitLab Snippets",
 	Args:  cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
-		results, err := internal.SearchGists(args[0])
+		provider := internal.ProviderByName(searchProvider)
+		results, err := provider.SearchSnippets(args[0])
 		if err != nil {
 			return err
 		}
@@ -26,4 +29,8 @@ var searchCmd = &cobra.Command{
 		}
 		return nil
 	},
+}
+
+func init() {
+	searchCmd.Flags().StringVar(&searchProvider, "provider", "github", "Provider to search (github, gitlab)")
 }

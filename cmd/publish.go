@@ -11,8 +11,9 @@ import (
 )
 
 var (
-	publishPublic bool
-	publishSecret bool
+	publishPublic   bool
+	publishSecret   bool
+	publishProvider string
 )
 
 var publishCmd = &cobra.Command{
@@ -76,20 +77,22 @@ var publishCmd = &cobra.Command{
 		if isPublic {
 			visibility = "public"
 		}
-		fmt.Printf("Publishing %d files as a %s gist...\n", len(files), visibility)
+		provider := internal.ProviderByName(publishProvider)
+		fmt.Printf("Publishing %d files as a %s %s snippet...\n", len(files), visibility, provider.Name())
 
-		gist, err := internal.CreateGist(description, files, isPublic)
+		gist, err := provider.CreateSnippet(description, files, isPublic)
 		if err != nil {
 			return err
 		}
 
 		fmt.Printf("✓ Published: %s\n", gist.HTMLURL)
-		fmt.Printf("  Install with: gh skill add %s\n", gist.ID)
+		fmt.Printf("  Install with: gh skill add %s\n", gist.HTMLURL)
 		return nil
 	},
 }
 
 func init() {
-	publishCmd.Flags().BoolVar(&publishPublic, "public", false, "Create a public gist")
-	publishCmd.Flags().BoolVar(&publishSecret, "secret", false, "Create a secret (unlisted) gist (default)")
+	publishCmd.Flags().BoolVar(&publishPublic, "public", false, "Create a public gist/snippet")
+	publishCmd.Flags().BoolVar(&publishSecret, "secret", false, "Create a secret (unlisted) gist/snippet (default)")
+	publishCmd.Flags().StringVar(&publishProvider, "provider", "github", "Provider to publish to (github or gitlab)")
 }

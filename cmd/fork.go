@@ -11,7 +11,8 @@ import (
 )
 
 var (
-	forkPublic bool
+	forkPublic   bool
+	forkProvider string
 )
 
 var forkCmd = &cobra.Command{
@@ -81,7 +82,8 @@ Search order:
 		}
 		fmt.Printf("Publishing %d files as a %s gist...\n", len(files), visibility)
 
-		gist, err := internal.CreateGist(description, files, forkPublic)
+		provider := internal.ProviderByName(forkProvider)
+		gist, err := provider.CreateSnippet(description, files, forkPublic)
 		if err != nil {
 			return err
 		}
@@ -138,4 +140,5 @@ func hasSkillMD(dir string) bool {
 
 func init() {
 	forkCmd.Flags().BoolVar(&forkPublic, "public", false, "Create a public gist")
+	forkCmd.Flags().StringVar(&forkProvider, "provider", "github", "Target provider (github, gitlab)")
 }

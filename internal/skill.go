@@ -18,6 +18,7 @@ const SkillsDir = ".gistskills"
 type SkillMeta struct {
 	Name        string `json:"name"`
 	GistID      string `json:"gist_id"`
+	Provider    string `json:"provider,omitempty"`
 	CommitSHA   string `json:"commit_sha"`
 	Description string `json:"description"`
 	Version     string `json:"version"`
@@ -25,6 +26,14 @@ type SkillMeta struct {
 	GistURL     string `json:"gist_url"`
 	InstalledAt string `json:"installed_at"`
 	UpdatedAt   string `json:"updated_at"`
+}
+
+// EffectiveProvider returns the provider name, defaulting to "github".
+func (m *SkillMeta) EffectiveProvider() string {
+	if m.Provider == "" {
+		return "github"
+	}
+	return m.Provider
 }
 
 // FrontMatter represents YAML front matter in SKILL.md.
@@ -111,8 +120,12 @@ func ParseFrontMatter(content string) (*FrontMatter, error) {
 	return &fm, nil
 }
 
-// InstallSkill installs a gist as a skill.
-func InstallSkill(g *Gist) (*SkillMeta, error) {
+// InstallSkill installs a gist/snippet as a skill. Provider defaults to "github".
+func InstallSkill(g *Gist, providerName ...string) (*SkillMeta, error) {
+	pName := "github"
+	if len(providerName) > 0 && providerName[0] != "" {
+		pName = providerName[0]
+	}
 	// Find the skill file (*.skill.md or legacy SKILL.md)
 	skillFileName, skillFile, ok := FindSkillFile(g.Files)
 	if !ok {
@@ -165,6 +178,7 @@ func InstallSkill(g *Gist) (*SkillMeta, error) {
 	meta := &SkillMeta{
 		Name:        name,
 		GistID:      g.ID,
+		Provider:    pName,
 		CommitSHA:   commitSHA,
 		Description: fm.Description,
 		Version:     fm.Version,

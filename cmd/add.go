@@ -18,10 +18,10 @@ var addCmd = &cobra.Command{
 	Short: "Install a skill from a GitHub Gist",
 	Args:  cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
-		gistID := internal.ParseGistID(args[0])
-		fmt.Printf("Fetching gist %s...\n", gistID)
+		provider, snippetID := internal.DetectProvider(args[0])
+		fmt.Printf("Fetching %s snippet %s...\n", provider.Name(), snippetID)
 
-		gist, err := internal.FetchGist(gistID)
+		gist, err := provider.FetchSnippet(snippetID)
 		if err != nil {
 			return err
 		}
@@ -40,8 +40,8 @@ var addCmd = &cobra.Command{
 		// Trust gate
 		skipPrompt := addYes || addIdgaf
 		if !skipPrompt {
-			// Own gists are implicitly trusted
-			if authUser := internal.AuthenticatedUser(); authUser != "" && strings.EqualFold(authUser, gist.Owner.Login) {
+			// Own gists/snippets are implicitly trusted
+			if authUser := provider.AuthenticatedUser(); authUser != "" && strings.EqualFold(authUser, gist.Owner.Login) {
 				skipPrompt = true
 			}
 		}
@@ -75,7 +75,7 @@ var addCmd = &cobra.Command{
 			}
 		}
 
-		meta, err := internal.InstallSkill(gist)
+		meta, err := internal.InstallSkill(gist, provider.Name())
 		if err != nil {
 			return err
 		}

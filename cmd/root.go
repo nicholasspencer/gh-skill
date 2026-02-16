@@ -6,8 +6,8 @@ import (
 
 var rootCmd = &cobra.Command{
 	Use:   "skill",
-	Short: "Manage AI agent skills stored as GitHub Gists",
-	Long:  "gh skill — install, publish, and manage AI agent skills backed by GitHub Gists.",
+	Short: "Manage AI agent skills stored as GitHub Gists and GitLab Snippets",
+	Long:  "gh skill — install, publish, and manage AI agent skills backed by GitHub Gists and GitLab Snippets.",
 }
 
 func Execute() error {
