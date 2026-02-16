@@ -43,18 +43,6 @@ func SkillsBasePath() string {
 	return filepath.Join(home, SkillsDir)
 }
 
-// ExpandFilename converts gist flat filenames to directory paths.
-// e.g., "scripts--setup.sh" → "scripts/setup.sh"
-func ExpandFilename(name string) string {
-	return strings.ReplaceAll(name, "--", string(os.PathSeparator))
-}
-
-// FlattenFilename converts directory paths to gist flat filenames.
-// e.g., "scripts/setup.sh" → "scripts--setup.sh"
-func FlattenFilename(path string) string {
-	return strings.ReplaceAll(path, string(os.PathSeparator), "--")
-}
-
 // ParseFrontMatter extracts YAML front matter from a SKILL.md content string.
 func ParseFrontMatter(content string) (*FrontMatter, error) {
 	scanner := bufio.NewScanner(strings.NewReader(content))
@@ -102,15 +90,11 @@ func InstallSkill(g *Gist) (*SkillMeta, error) {
 		return nil, fmt.Errorf("failed to create skill directory: %w", err)
 	}
 
-	// Write all files, expanding -- convention
+	// Write all files directly (gists are flat, no subdirectory expansion)
 	for filename, file := range g.Files {
-		expanded := ExpandFilename(filename)
-		destPath := filepath.Join(skillDir, expanded)
-		if err := os.MkdirAll(filepath.Dir(destPath), 0755); err != nil {
-			return nil, fmt.Errorf("failed to create directory for %s: %w", expanded, err)
-		}
+		destPath := filepath.Join(skillDir, filename)
 		if err := os.WriteFile(destPath, []byte(file.Content), 0644); err != nil {
-			return nil, fmt.Errorf("failed to write %s: %w", expanded, err)
+			return nil, fmt.Errorf("failed to write %s: %w", filename, err)
 		}
 	}
 

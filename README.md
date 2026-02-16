@@ -50,7 +50,12 @@ gh skill remove my-skill
 gh skill publish ./my-skill-folder
 ```
 
-Creates a gist from a folder containing a `SKILL.md`. Subdirectories are flattened using the `--` convention (e.g., `scripts/setup.sh` → `scripts--setup.sh`).
+Creates a secret (unlisted) gist from a folder containing a `SKILL.md`. Gist files are flat — all files in the skill folder root are published directly.
+
+```bash
+gh skill publish ./my-skill --public   # make it discoverable
+gh skill publish ./my-skill --secret   # explicit secret (default)
+```
 
 ### Search for skills
 
