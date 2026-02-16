@@ -48,22 +48,21 @@ var publishCmd = &cobra.Command{
 			isPublic = true
 		}
 
-		// Collect top-level files only (gists are flat)
+		// Collect all files, flattening subdirectories with -- convention
 		files := make(map[string]string)
-		entries, err := os.ReadDir(dir)
-		if err != nil {
-			return err
-		}
-		for _, e := range entries {
-			if e.IsDir() || strings.HasPrefix(e.Name(), ".") {
-				continue
+		filepath.Walk(dir, func(path string, fi os.FileInfo, err error) error {
+			if err != nil || fi.IsDir() || strings.HasPrefix(fi.Name(), ".") {
+				return nil
 			}
-			content, err := os.ReadFile(filepath.Join(dir, e.Name()))
+			rel, _ := filepath.Rel(dir, path)
+			content, err := os.ReadFile(path)
 			if err != nil {
-				continue
+				return nil
 			}
-			files[e.Name()] = string(content)
-		}
+			gistName := internal.FlattenFilename(rel)
+			files[gistName] = string(content)
+			return nil
+		})
 
 		visibility := "secret"
 		if isPublic {
