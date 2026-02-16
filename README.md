@@ -17,7 +17,7 @@ gh skill add https://gist.github.com/user/abc123
 gh skill add abc123  # by ID
 ```
 
-Skills are installed to `~/.gistskills/<name>/` and automatically symlinked to detected AI tool skill directories (Claude Code, OpenClaw, Codex, OpenCode).
+Skills are installed to `~/.gistskills/<name>/` and automatically symlinked to detected AI tool skill directories (Claude Code, OpenClaw, Copilot CLI, Codex, OpenCode).
 
 ### List installed skills
 
@@ -96,6 +96,7 @@ Instructions for the AI agent...
 |------|----------------|-------------|
 | Claude Code | `~/.claude/skills/` | ✓ |
 | OpenClaw | `~/.chad/skills/` | ✓ |
+| Copilot CLI | `~/.copilot/skills/` | ✓ |
 | Codex | `~/.codex/skills/` | ✓ |
 | OpenCode | `~/.opencode/skills/` | ✓ |
 | Cursor | `.cursor/skills/` | ✗ (project-level) |

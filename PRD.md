@@ -130,6 +130,7 @@ Skills install to `~/.gistskills/` by default, then get symlinked into tool-spec
 Auto-detection of installed tools:
 - **Claude Code:** `~/.claude/skills/`  
 - **OpenClaw:** `~/.chad/skills/` (or configured path)
+- **Copilot CLI:** `~/.copilot/skills/`
 - **Cursor:** `.cursor/skills/` (project-level)
 - **Codex:** `.codex/skills/`
 - **OpenCode:** `.opencode/skills/`

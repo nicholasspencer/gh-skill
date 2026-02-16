@@ -24,6 +24,7 @@ func DetectToolDirs() []string {
 	}{
 		{"claude-code", filepath.Join(home, ".claude", "skills")},
 		{"openclaw", openclawSkillsDir(home)},
+		{"copilot", filepath.Join(home, ".copilot", "skills")},
 		{"codex", filepath.Join(home, ".codex", "skills")},
 		{"opencode", filepath.Join(home, ".opencode", "skills")},
 	}
@@ -44,6 +45,7 @@ func KnownTools() []ToolTarget {
 	return []ToolTarget{
 		{"claude-code", filepath.Join(home, ".claude", "skills")},
 		{"openclaw", openclawSkillsDir(home)},
+		{"copilot", filepath.Join(home, ".copilot", "skills")},
 		{"cursor", filepath.Join(".cursor", "skills")}, // project-level
 		{"codex", filepath.Join(home, ".codex", "skills")},
 		{"opencode", filepath.Join(home, ".opencode", "skills")},
@@ -104,5 +106,5 @@ func ToolDirByName(name string) (string, error) {
 			return t.Dir, nil
 		}
 	}
-	return "", fmt.Errorf("unknown tool %q (known: claude-code, openclaw, cursor, codex, opencode)", name)
+	return "", fmt.Errorf("unknown tool %q (known: claude-code, openclaw, copilot, cursor, codex, opencode)", name)
 }
