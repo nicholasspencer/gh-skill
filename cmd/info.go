@@ -24,6 +24,7 @@ var infoCmd = &cobra.Command{
 		fmt.Printf("Description: %s\n", meta.Description)
 		fmt.Printf("Author:      %s\n", meta.Author)
 		fmt.Printf("Gist:        %s\n", meta.GistURL)
+		fmt.Printf("Provider:    %s\n", meta.EffectiveProvider())
 		fmt.Printf("Gist ID:     %s\n", meta.GistID)
 		fmt.Printf("Commit:      %s\n", meta.CommitSHA)
 		fmt.Printf("Installed:   %s\n", meta.InstalledAt)

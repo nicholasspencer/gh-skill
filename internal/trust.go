@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"strings"
 	"time"
@@ -86,12 +85,9 @@ func (ts *TrustStore) RemoveAuthor(username string) bool {
 }
 
 // AuthenticatedUser returns the current gh-authenticated username.
+// Deprecated: Use Provider.AuthenticatedUser() instead.
 func AuthenticatedUser() string {
-	out, err := exec.Command("gh", "api", "user", "--jq", ".login").Output()
-	if err != nil {
-		return ""
-	}
-	return strings.TrimSpace(string(out))
+	return (&GitHubProvider{}).AuthenticatedUser()
 }
 
 // IsScriptFile returns true if the filename looks like an executable script.

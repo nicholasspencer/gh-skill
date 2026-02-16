@@ -23,7 +23,7 @@ var updateCmd = &cobra.Command{
 				return nil
 			}
 			for _, s := range skills {
-				if err := updateSkill(s.Name, s.GistID); err != nil {
+				if err := updateSkill(s.Name, s.GistID, s.EffectiveProvider()); err != nil {
 					fmt.Printf("✗ Failed to update %s: %v\n", s.Name, err)
 				}
 			}
@@ -38,16 +38,17 @@ var updateCmd = &cobra.Command{
 		if err != nil {
 			return err
 		}
-		return updateSkill(meta.Name, meta.GistID)
+		return updateSkill(meta.Name, meta.GistID, meta.EffectiveProvider())
 	},
 }
 
-func updateSkill(name, gistID string) error {
-	gist, err := internal.FetchGist(gistID)
+func updateSkill(name, gistID, providerName string) error {
+	provider := internal.ProviderByName(providerName)
+	gist, err := provider.FetchSnippet(gistID)
 	if err != nil {
 		return err
 	}
-	meta, err := internal.InstallSkill(gist)
+	meta, err := internal.InstallSkill(gist, provider.Name())
 	if err != nil {
 		return err
 	}
