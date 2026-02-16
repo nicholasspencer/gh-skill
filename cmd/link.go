@@ -16,7 +16,7 @@ var linkCmd = &cobra.Command{
 	RunE: func(cmd *cobra.Command, args []string) error {
 		name := args[0]
 		if linkTarget == "" {
-			return fmt.Errorf("--target is required (claude-code, openclaw, copilot, cursor, codex, opencode)")
+			return fmt.Errorf("--target is required (claude-code, openclaw, openclaw/<agent>, copilot, cursor, codex, opencode)")
 		}
 
 		dir, err := internal.ToolDirByName(linkTarget)
@@ -34,5 +34,5 @@ var linkCmd = &cobra.Command{
 }
 
 func init() {
-	linkCmd.Flags().StringVar(&linkTarget, "target", "", "Target tool (claude-code, openclaw, copilot, cursor, codex, opencode)")
+	linkCmd.Flags().StringVar(&linkTarget, "target", "", "Target tool (claude-code, openclaw[/<agent>], copilot, cursor, codex, opencode)")
 }
