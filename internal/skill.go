@@ -55,6 +55,41 @@ func FlattenFilename(path string) string {
 	return strings.ReplaceAll(path, string(os.PathSeparator), "--")
 }
 
+// IsSkillFile checks if a filename matches the <name>.skill.md pattern.
+func IsSkillFile(filename string) bool {
+	return strings.HasSuffix(strings.ToLower(filename), ".skill.md")
+}
+
+// SkillFileName returns the gist filename for a skill: <name>.skill.md
+func SkillFileName(name string) string {
+	return name + ".skill.md"
+}
+
+// FindSkillFile finds the *.skill.md file in a gist's files map.
+// Falls back to SKILL.md for backward compatibility.
+func FindSkillFile(files map[string]GistFile) (string, GistFile, bool) {
+	// First look for *.skill.md
+	for name, f := range files {
+		if IsSkillFile(name) {
+			return name, f, true
+		}
+	}
+	// Fallback: legacy SKILL.md
+	if f, ok := files["SKILL.md"]; ok {
+		return "SKILL.md", f, true
+	}
+	return "", GistFile{}, false
+}
+
+// SkillNameFromFile extracts the skill name from a <name>.skill.md filename.
+func SkillNameFromFile(filename string) string {
+	lower := strings.ToLower(filename)
+	if strings.HasSuffix(lower, ".skill.md") {
+		return filename[:len(filename)-len(".skill.md")]
+	}
+	return ""
+}
+
 // ParseFrontMatter extracts YAML front matter from a SKILL.md content string.
 func ParseFrontMatter(content string) (*FrontMatter, error) {
 	scanner := bufio.NewScanner(strings.NewReader(content))
@@ -78,10 +113,10 @@ func ParseFrontMatter(content string) (*FrontMatter, error) {
 
 // InstallSkill installs a gist as a skill.
 func InstallSkill(g *Gist) (*SkillMeta, error) {
-	// Check for SKILL.md
-	skillFile, ok := g.Files["SKILL.md"]
+	// Find the skill file (*.skill.md or legacy SKILL.md)
+	skillFileName, skillFile, ok := FindSkillFile(g.Files)
 	if !ok {
-		return nil, fmt.Errorf("gist does not contain a SKILL.md file")
+		return nil, fmt.Errorf("gist does not contain a *.skill.md file")
 	}
 
 	// Parse front matter for name
@@ -90,9 +125,12 @@ func InstallSkill(g *Gist) (*SkillMeta, error) {
 		return nil, err
 	}
 
+	// Determine skill name: front matter > filename > gist ID
 	name := fm.Name
 	if name == "" {
-		// Fallback: use gist ID
+		name = SkillNameFromFile(skillFileName)
+	}
+	if name == "" {
 		name = g.ID
 	}
 
@@ -103,8 +141,12 @@ func InstallSkill(g *Gist) (*SkillMeta, error) {
 	}
 
 	// Write all files, expanding -- convention for subdirectories
+	// Rename <name>.skill.md → SKILL.md on install (tools expect SKILL.md)
 	for filename, file := range g.Files {
 		expanded := ExpandFilename(filename)
+		if IsSkillFile(expanded) {
+			expanded = "SKILL.md"
+		}
 		destPath := filepath.Join(skillDir, expanded)
 		if err := os.MkdirAll(filepath.Dir(destPath), 0755); err != nil {
 			return nil, fmt.Errorf("failed to create directory for %s: %w", expanded, err)

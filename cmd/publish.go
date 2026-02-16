@@ -33,14 +33,18 @@ var publishCmd = &cobra.Command{
 			return fmt.Errorf("directory must contain a SKILL.md file")
 		}
 
-		// Read SKILL.md for description
+		// Read SKILL.md for description and name
 		skillContent, _ := os.ReadFile(skillPath)
 		fm, _ := internal.ParseFrontMatter(string(skillContent))
+		skillName := fm.Name
+		if skillName == "" {
+			skillName = filepath.Base(dir)
+		}
 		description := fm.Description
 		if description == "" {
-			description = fm.Name
+			description = skillName
 		}
-		description += " #gistskill"
+		description = "[gh-skill] " + description
 
 		// Determine visibility: secret by default, --public overrides, --secret is explicit
 		isPublic := false
@@ -60,6 +64,10 @@ var publishCmd = &cobra.Command{
 				return nil
 			}
 			gistName := internal.FlattenFilename(rel)
+			// Rename SKILL.md → <name>.skill.md for the gist
+			if gistName == "SKILL.md" {
+				gistName = internal.SkillFileName(skillName)
+			}
 			files[gistName] = string(content)
 			return nil
 		})

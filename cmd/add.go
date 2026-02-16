@@ -26,10 +26,10 @@ var addCmd = &cobra.Command{
 			return err
 		}
 
-		// Check for SKILL.md before trust prompt
-		skillFile, ok := gist.Files["SKILL.md"]
+		// Find skill file (*.skill.md or legacy SKILL.md)
+		_, skillFile, ok := internal.FindSkillFile(gist.Files)
 		if !ok {
-			return fmt.Errorf("gist does not contain a SKILL.md file")
+			return fmt.Errorf("gist does not contain a *.skill.md file")
 		}
 
 		fm, err := internal.ParseFrontMatter(skillFile.Content)

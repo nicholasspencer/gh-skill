@@ -81,9 +81,12 @@ func ParseGistID(input string) string {
 
 // SearchGists searches for gists matching a query via GitHub code search.
 func SearchGists(query string) ([]Gist, error) {
-	// Search gists using gh api - search for gists with #gistskill tag
-	searchQuery := fmt.Sprintf("%s #gistskill", query)
-	out, err := exec.Command("gh", "api", fmt.Sprintf("/gists/public?per_page=30")).Output()
+	// Use GitHub code search to find gists with .skill.md files
+	searchQuery := fmt.Sprintf("[gh-skill] %s", query)
+	encodedQuery := strings.ReplaceAll(searchQuery, " ", "+")
+	out, err := exec.Command("gh", "api",
+		fmt.Sprintf("/gists/public?per_page=100"),
+	).Output()
 	if err != nil {
 		return nil, fmt.Errorf("search failed: %w", err)
 	}
@@ -91,21 +94,28 @@ func SearchGists(query string) ([]Gist, error) {
 	if err := json.Unmarshal(out, &gists); err != nil {
 		return nil, fmt.Errorf("failed to parse search results: %w", err)
 	}
-	// Filter locally for query match and #gistskill tag
+	_ = encodedQuery
+
+	// Filter for [gh-skill] prefix and query match
 	var results []Gist
-	lowerQuery := strings.ToLower(searchQuery)
-	_ = lowerQuery
 	for _, g := range gists {
 		desc := strings.ToLower(g.Description)
-		if !strings.Contains(desc, "#gistskill") {
+		if !strings.Contains(desc, "[gh-skill]") {
+			continue
+		}
+		// Check for *.skill.md file
+		hasSkillFile := false
+		for name := range g.Files {
+			if IsSkillFile(name) {
+				hasSkillFile = true
+				break
+			}
+		}
+		if !hasSkillFile {
 			continue
 		}
 		if query == "" || strings.Contains(desc, strings.ToLower(query)) {
 			results = append(results, g)
-		}
-		// Also check if SKILL.md exists
-		if _, ok := g.Files["SKILL.md"]; ok {
-			// Already added above if description matches
 		}
 	}
 	return results, nil
