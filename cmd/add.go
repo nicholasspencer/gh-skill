@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/nicholasspencer/gh-skill/internal"
 	"github.com/spf13/cobra"
@@ -38,6 +39,12 @@ var addCmd = &cobra.Command{
 
 		// Trust gate
 		skipPrompt := addYes || addIdgaf
+		if !skipPrompt {
+			// Own gists are implicitly trusted
+			if authUser := internal.AuthenticatedUser(); authUser != "" && strings.EqualFold(authUser, gist.Owner.Login) {
+				skipPrompt = true
+			}
+		}
 		if !skipPrompt {
 			ts, err := internal.LoadTrustStore()
 			if err != nil {
