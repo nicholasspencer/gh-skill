@@ -70,36 +70,91 @@ func CreateGist(description string, files map[string]string, public bool) (*Gist
 	return &g, nil
 }
 
-// SearchGists searches for gists matching a query via GitHub API.
+// SearchGists searches for skills by combining the user's own gists with
+// a GitHub code search for repo-hosted skills.
 func SearchGists(query string) ([]Gist, error) {
-	out, err := exec.Command("gh", "api", "/gists/public?per_page=100").Output()
-	if err != nil {
-		return nil, fmt.Errorf("search failed: %w", err)
-	}
-	var gists []Gist
-	if err := json.Unmarshal(out, &gists); err != nil {
-		return nil, fmt.Errorf("failed to parse search results: %w", err)
-	}
-
+	seen := make(map[string]bool)
 	var results []Gist
-	for _, g := range gists {
-		desc := strings.ToLower(g.Description)
-		if !strings.Contains(desc, "[gh-skill]") {
-			continue
-		}
-		hasSkillFile := false
-		for name := range g.Files {
-			if IsSkillFile(name) {
-				hasSkillFile = true
-				break
+
+	// 1. User's own gists — GET /gists?per_page=100
+	if out, err := exec.Command("gh", "api", "/gists?per_page=100").Output(); err == nil {
+		var gists []Gist
+		if err := json.Unmarshal(out, &gists); err == nil {
+			for _, g := range gists {
+				if seen[g.ID] {
+					continue
+				}
+				desc := strings.ToLower(g.Description)
+				if !strings.Contains(desc, "[gh-skill]") {
+					continue
+				}
+				if !gistHasSkillFile(g) {
+					continue
+				}
+				if query == "" || strings.Contains(desc, strings.ToLower(query)) {
+					seen[g.ID] = true
+					results = append(results, g)
+				}
 			}
 		}
-		if !hasSkillFile {
-			continue
-		}
-		if query == "" || strings.Contains(desc, strings.ToLower(query)) {
-			results = append(results, g)
+	}
+
+	// 2. Code search for repo-hosted skills
+	if query != "" {
+		q := fmt.Sprintf("%s gh-skill filename:skill.md", query)
+		endpoint := fmt.Sprintf("/search/code?q=%s&per_page=30", strings.ReplaceAll(q, " ", "+"))
+		if out, err := exec.Command("gh", "api", endpoint).Output(); err == nil {
+			var searchResp codeSearchResponse
+			if err := json.Unmarshal(out, &searchResp); err == nil {
+				for _, item := range searchResp.Items {
+					repoFullName := item.Repository.FullName
+					if seen[repoFullName] {
+						continue
+					}
+					seen[repoFullName] = true
+					// Convert code search hit to a Gist-like result
+					results = append(results, Gist{
+						ID:          repoFullName,
+						Description: item.Repository.Description,
+						HTMLURL:     item.Repository.HTMLURL,
+						Files: map[string]GistFile{
+							item.Name: {Filename: item.Name, RawURL: item.HTMLURL},
+						},
+						Owner: struct {
+							Login string `json:"login"`
+						}{Login: item.Repository.Owner.Login},
+					})
+				}
+			}
 		}
 	}
+
 	return results, nil
+}
+
+func gistHasSkillFile(g Gist) bool {
+	for name := range g.Files {
+		if IsSkillFile(name) {
+			return true
+		}
+	}
+	return false
+}
+
+// codeSearchResponse represents the GitHub code search API response.
+type codeSearchResponse struct {
+	Items []codeSearchItem `json:"items"`
+}
+
+type codeSearchItem struct {
+	Name    string `json:"name"`
+	HTMLURL string `json:"html_url"`
+	Repository struct {
+		FullName    string `json:"full_name"`
+		Description string `json:"description"`
+		HTMLURL     string `json:"html_url"`
+		Owner       struct {
+			Login string `json:"login"`
+		} `json:"owner"`
+	} `json:"repository"`
 }
