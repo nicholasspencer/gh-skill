@@ -1,9 +1,11 @@
 package cmd
 
 import (
+	"bufio"
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/nicholasspencer/gh-skill/internal"
 	"github.com/spf13/cobra"
@@ -14,7 +16,7 @@ var installOutput string
 var installCmd = &cobra.Command{
 	Use:   "install <gist-url-or-id>",
 	Short: "Download skill files to the current directory",
-	Long:  "Downloads gist files directly without linking or managing. Use -o to specify an output directory.",
+	Long:  "Downloads gist files directly without linking or managing. Use -o to specify an output directory. Prompts before overwriting existing files.",
 	Args:  cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		gistID := internal.ParseGistID(args[0])
@@ -48,6 +50,29 @@ var installCmd = &cobra.Command{
 
 		// Create skill subdirectory
 		destDir := filepath.Join(outDir, name)
+
+		// Check for existing directory and prompt
+		if info, err := os.Stat(destDir); err == nil && info.IsDir() {
+			fmt.Printf("⚠️  Directory %s/ already exists.\n", destDir)
+			fmt.Print("  [r]eplace / [b]ackup / [a]bort? ")
+			reader := bufio.NewReader(os.Stdin)
+			input, _ := reader.ReadString('\n')
+			input = strings.TrimSpace(strings.ToLower(input))
+			switch input {
+			case "r", "replace":
+				// continue, overwrite
+			case "b", "backup":
+				backupDir := destDir + ".bak"
+				if err := os.Rename(destDir, backupDir); err != nil {
+					return fmt.Errorf("failed to backup: %w", err)
+				}
+				fmt.Printf("  Backed up to %s/\n", backupDir)
+			default:
+				fmt.Println("Aborted.")
+				return nil
+			}
+		}
+
 		if err := os.MkdirAll(destDir, 0755); err != nil {
 			return fmt.Errorf("failed to create directory %s: %w", destDir, err)
 		}
