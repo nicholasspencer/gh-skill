@@ -1,6 +1,12 @@
 # gh-skill
 
-A [GitHub CLI](https://cli.github.com/) extension for managing AI agent skills stored as GitHub Gists.
+A [GitHub CLI](https://cli.github.com/) extension that turns GitHub Gists into a universal skill registry for AI coding agents.
+
+## What is this?
+
+AI agent skills (`SKILL.md` + scripts + docs) are becoming a standard across tools — Claude Code, Copilot CLI, OpenClaw, Codex, Cursor, OpenCode. But sharing them is fragmented.
+
+`gh skill` fixes that. One command to publish a skill, one command to install it — across every tool.
 
 ## Install
 
@@ -8,98 +14,48 @@ A [GitHub CLI](https://cli.github.com/) extension for managing AI agent skills s
 gh extension install nicholasspencer/gh-skill
 ```
 
+Requires the [GitHub CLI](https://cli.github.com/).
+
 ## Usage
 
-### Install a skill from a gist
+You probably shouldn't be running these commands yourself. The whole point is to let your AI agent handle it. Point your agent at this repo (or install the bundled skill-creator skill) and let it do the work — that's where the speed comes from.
 
 ```bash
+# Install a skill
 gh skill add https://gist.github.com/user/abc123
-gh skill add abc123  # by ID
-```
 
-Skills are installed to `~/.gistskills/<name>/` and automatically symlinked to detected AI tool skill directories (Claude Code, OpenClaw, Copilot CLI, Codex, OpenCode).
+# Publish a skill
+gh skill publish ./my-skill
 
-### List installed skills
-
-```bash
-gh skill list
-```
-
-### Get skill info
-
-```bash
-gh skill info my-skill
-```
-
-### Update skills
-
-```bash
-gh skill update my-skill
-gh skill update --all
-```
-
-### Remove a skill
-
-```bash
-gh skill remove my-skill
-```
-
-### Publish a local skill as a gist
-
-```bash
-gh skill publish ./my-skill-folder
-```
-
-Creates a secret (unlisted) gist from a folder containing a `SKILL.md`. Gist files are flat — all files in the skill folder root are published directly.
-
-```bash
-gh skill publish ./my-skill --public   # make it discoverable
-gh skill publish ./my-skill --secret   # explicit secret (default)
-```
-
-### Search for skills
-
-```bash
+# Search for skills
 gh skill search "git automation"
 ```
 
-Searches public gists tagged with `#gistskill`.
-
-### Link to a specific tool
-
-```bash
-gh skill link my-skill --target claude-code
-gh skill link my-skill --target openclaw
-```
-
-## Skill Format
-
-A skill is a GitHub Gist with a `SKILL.md` file containing YAML front matter:
-
-```yaml
----
-name: my-skill
-description: What this skill does
-version: 1.0.0
-tags: [automation, git]
-author: username
----
-
-# My Skill
-
-Instructions for the AI agent...
-```
+That said, `gh skill --help` has everything if you want to poke around.
 
 ## Supported Tools
 
-| Tool | Skill Directory | Auto-linked |
-|------|----------------|-------------|
-| Claude Code | `~/.claude/skills/` | ✓ |
-| OpenClaw | `~/.chad/skills/` | ✓ |
-| Copilot CLI | `~/.copilot/skills/` | ✓ |
-| Codex | `~/.codex/skills/` | ✓ |
-| OpenCode | `~/.opencode/skills/` | ✓ |
-| Cursor | `.cursor/skills/` | ✗ (project-level) |
+Skills auto-link to every detected tool on your machine:
+
+| Tool | Skill Directory |
+|------|----------------|
+| [Claude Code](https://docs.anthropic.com/en/docs/claude-code) | `~/.claude/skills/` |
+| [Copilot CLI](https://githubnext.com/projects/copilot-cli) | `~/.copilot/skills/` |
+| [OpenClaw](https://openclaw.ai) | `~/.chad/skills/` |
+| [Codex](https://openai.com/index/introducing-codex/) | `~/.codex/skills/` |
+| [OpenCode](https://opencode.ai) | `~/.opencode/skills/` |
+| [Cursor](https://cursor.sh) | `.cursor/skills/` |
+
+## How it works (for the curious)
+
+A GitHub Gist already *is* a skill folder — multiple files, versioning, forks, stars, API access. `gh skill` adds a thin convention on top:
+
+1. A skill is a gist with a `SKILL.md` file (YAML front matter + instructions)
+2. Subdirectories are flattened with `--` separators (`scripts/setup.sh` → `scripts--setup.sh`)
+3. On install, files are expanded back and symlinked into your tools' skill directories
+4. Unknown authors go through a trust gate before install
+
+If you want the full technical details — how the trust model works, the file naming conventions, the architecture — check out [AGENTS.md](AGENTS.md). It's written for AI agents working on this project, but it's the most complete reference for everything under the hood.
 
 ## License
 
